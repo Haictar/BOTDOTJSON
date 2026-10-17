@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "24/7 Minecraft Bot"
+description = "A status dashboard and protected control panel for a Mineflayer bot. View the connection state and in-game position, and start, stop, or restart the bot from its web page."
+version = "1.0.0"
+id = "artifacts/minecraft-bot"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23418
+
+[services.development]
+run = "pnpm --filter @workspace/minecraft-bot run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/minecraft-bot", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/minecraft-bot/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23418"
+BASE_PATH = "/"

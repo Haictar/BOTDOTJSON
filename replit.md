@@ -1,45 +1,30 @@
-# [Project name]
+# 24/7 Minecraft Bot
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A Mineflayer bot with a live status dashboard and web controls for starting, stopping, or restarting the published bot.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- `pnpm --filter @workspace/minecraft-bot run dev` — run the dashboard.
+- `pnpm --filter @workspace/api-server run dev` — run the API and bot service.
+- `pnpm run typecheck` — typecheck the workspace.
+- The development dashboard and API do not connect to Minecraft. The bot connects automatically only in the published deployment to avoid duplicate logins with the same username.
+- Start, Stop, and Restart controls are intentionally unauthenticated. Anyone who can reach the published dashboard can control the bot.
+- Stop disables automatic reconnect. Start enables reconnect and opens a new Minecraft connection. Restart reconnects after a short delay and is limited to one manual restart every 30 seconds.
+- The bot uses Mineflayer's default offline authentication. Online-mode Minecraft servers need account authentication configured before connecting.
 
-## Stack
+## Minecraft Settings
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+The imported values remain the defaults and can be overridden with environment variables:
 
-## Where things live
+- `MINECRAFT_HOST` — server host.
+- `MINECRAFT_PORT` — server port.
+- `MINECRAFT_USERNAME` — bot username.
+- `BOT_START_X`, `BOT_START_Y`, `BOT_START_Z` — teleport start coordinates.
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+The bot teleports 10 blocks on the X axis every 60 seconds, returns to its start coordinates and reconnects hourly, and retries unexpected disconnects after 10 seconds. Teleport commands require server permission.
 
-## Architecture decisions
+## Project Layout
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
-
-## Product
-
-_Describe the high-level user-facing capabilities of this app once they exist._
-
-## User preferences
-
-_Populate as you build — explicit user instructions worth remembering across sessions._
-
-## Gotchas
-
-_Populate as you build — sharp edges, "always run X before Y" rules._
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- `artifacts/minecraft-bot` — React status dashboard.
+- `artifacts/api-server` — status API and Mineflayer lifecycle manager.
+- `lib/api-spec/openapi.yaml` — source contract for generated API hooks and validation schemas.

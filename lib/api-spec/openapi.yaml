@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: minecraft-bot
+    description: Status and runtime controls for the Minecraft bot
 paths:
   /healthz:
     get:
@@ -24,6 +26,78 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /bot/status:
+    get:
+      operationId: getBotStatus
+      tags: [minecraft-bot]
+      summary: Get the current bot status
+      responses:
+        "200":
+          description: Current bot status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BotStatus"
+  /bot/start:
+    post:
+      operationId: startBot
+      tags: [minecraft-bot]
+      summary: Start or reconnect the bot
+      responses:
+        "202":
+          description: Start request accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BotActionResponse"
+        "409":
+          description: Bot controls are unavailable in this environment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /bot/stop:
+    post:
+      operationId: stopBot
+      tags: [minecraft-bot]
+      summary: Stop the bot and disable automatic reconnect
+      responses:
+        "202":
+          description: Stop request accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BotActionResponse"
+        "409":
+          description: Bot controls are unavailable in this environment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /bot/restart:
+    post:
+      operationId: restartBot
+      tags: [minecraft-bot]
+      summary: Restart the bot
+      responses:
+        "202":
+          description: Restart request accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BotActionResponse"
+        "409":
+          description: Bot controls are unavailable in this environment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          description: Restart cooldown has not elapsed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +107,50 @@ components:
           type: string
       required:
         - status
+    BotStatus:
+      type: object
+      properties:
+        status:
+          type: string
+        position:
+          type: string
+        connected:
+          type: boolean
+        desiredState:
+          type: string
+          enum: [running, stopped]
+        controlAvailable:
+          type: boolean
+        serverHost:
+          type: string
+        serverPort:
+          type: integer
+        username:
+          type: string
+      required:
+        - status
+        - position
+        - connected
+        - desiredState
+        - controlAvailable
+        - serverHost
+        - serverPort
+        - username
+    BotActionResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        status:
+          $ref: "#/components/schemas/BotStatus"
+      required:
+        - message
+        - status
+    ApiError:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
 
