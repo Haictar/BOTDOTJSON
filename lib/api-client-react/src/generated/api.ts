@@ -22,12 +22,15 @@ import type {
 import type {
   ApiError,
   BotActionResponse,
+  BotServerSettings,
+  BotServerSettingsInput,
+  BotSettingsUpdateResponse,
   BotStatus,
   HealthStatus
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
-import type { ErrorType } from '../custom-fetch';
+import type { ErrorType , BodyType } from '../custom-fetch';
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -207,6 +210,171 @@ export function useGetBotStatus<TData = Awaited<ReturnType<typeof getBotStatus>>
 
 
 
+
+export const getGetBotSettingsUrl = () => {
+
+
+
+
+  return `/api/bot/settings`
+}
+
+/**
+ * @summary Get the saved Minecraft server settings
+ */
+export const getBotSettings = async ( options?: Parameters<typeof customFetch>[1]): Promise<BotServerSettings> => {
+
+  return customFetch<BotServerSettings>(getGetBotSettingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBotSettingsQueryKey = () => {
+    return [
+    `/api/bot/settings`
+    ] as const;
+    }
+
+
+export const getGetBotSettingsQueryOptions = <TData = Awaited<ReturnType<typeof getBotSettings>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBotSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBotSettingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBotSettings>>> = ({ signal }) => getBotSettings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBotSettings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBotSettingsQueryResult = NonNullable<Awaited<ReturnType<typeof getBotSettings>>>
+export type GetBotSettingsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get the saved Minecraft server settings
+ */
+
+export function useGetBotSettings<TData = Awaited<ReturnType<typeof getBotSettings>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBotSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBotSettingsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateBotSettingsUrl = () => {
+
+
+
+
+  return `/api/bot/settings`
+}
+
+/**
+ * @summary Save Minecraft server settings
+ */
+export const updateBotSettings = async (botServerSettingsInput: BotServerSettingsInput, options?: Parameters<typeof customFetch>[1]): Promise<BotSettingsUpdateResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<BotSettingsUpdateResponse>(getUpdateBotSettingsUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(botServerSettingsInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateBotSettingsMutationKey = () => ['updateBotSettings'] as const;
+
+export const getUpdateBotSettingsMutationOptions = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBotSettings>>, TError,UpdateBotSettingsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateBotSettings>>, TError,UpdateBotSettingsMutationVariables, TContext> => {
+
+const mutationKey = getUpdateBotSettingsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateBotSettings>>, UpdateBotSettingsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateBotSettings(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateBotSettingsMutationResult = NonNullable<Awaited<ReturnType<typeof updateBotSettings>>>
+    export type UpdateBotSettingsMutationBody = BodyType<BotServerSettingsInput>
+    export type UpdateBotSettingsMutationError = ErrorType<ApiError>
+    export type UpdateBotSettingsMutationVariables = {data: BodyType<BotServerSettingsInput>}
+
+    /**
+ * @summary Save Minecraft server settings
+ */
+export const useUpdateBotSettings = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBotSettings>>, TError,UpdateBotSettingsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateBotSettings>>,
+        TError,
+        UpdateBotSettingsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateBotSettingsMutationOptions(options));
+    }
 
 export const getStartBotUrl = () => {
 

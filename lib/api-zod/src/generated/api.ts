@@ -33,6 +33,56 @@ export const GetBotStatusResponse = zod.object({
 
 
 /**
+ * @summary Get the saved Minecraft server settings
+ */
+export const getBotSettingsResponseServerHostMax = 253;
+
+
+export const getBotSettingsResponseServerHostRegExp = new RegExp('^[A-Za-z0-9.-]+$');
+export const getBotSettingsResponseServerPortMax = 65535;
+
+
+
+export const GetBotSettingsResponse = zod.object({
+  "serverHost": zod.string().min(1).max(getBotSettingsResponseServerHostMax).regex(getBotSettingsResponseServerHostRegExp),
+  "serverPort": zod.number().int().min(1).max(getBotSettingsResponseServerPortMax)
+})
+
+
+/**
+ * @summary Save Minecraft server settings
+ */
+export const updateBotSettingsBodyServerHostMax = 253;
+
+
+export const updateBotSettingsBodyServerHostRegExp = new RegExp('^[A-Za-z0-9.-]+$');
+export const updateBotSettingsBodyServerPortMax = 65535;
+
+
+
+export const UpdateBotSettingsBody = zod.object({
+  "serverHost": zod.string().min(1).max(updateBotSettingsBodyServerHostMax).regex(updateBotSettingsBodyServerHostRegExp),
+  "serverPort": zod.number().int().min(1).max(updateBotSettingsBodyServerPortMax)
+})
+
+export const updateBotSettingsResponseSettingsServerHostMax = 253;
+
+
+export const updateBotSettingsResponseSettingsServerHostRegExp = new RegExp('^[A-Za-z0-9.-]+$');
+export const updateBotSettingsResponseSettingsServerPortMax = 65535;
+
+
+
+export const UpdateBotSettingsResponse = zod.object({
+  "message": zod.string(),
+  "settings": zod.object({
+  "serverHost": zod.string().min(1).max(updateBotSettingsResponseSettingsServerHostMax).regex(updateBotSettingsResponseSettingsServerHostRegExp),
+  "serverPort": zod.number().int().min(1).max(updateBotSettingsResponseSettingsServerPortMax)
+})
+})
+
+
+/**
  * @summary Start or reconnect the bot
  */
 export const StartBotResponse = zod.object({

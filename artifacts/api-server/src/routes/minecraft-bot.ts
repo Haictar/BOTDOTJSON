@@ -1,8 +1,11 @@
 import {
+  GetBotSettingsResponse,
   GetBotStatusResponse,
   RestartBotResponse,
   StartBotResponse,
   StopBotResponse,
+  UpdateBotSettingsBody,
+  UpdateBotSettingsResponse,
 } from "@workspace/api-zod";
 import { Router, type IRouter, type Response } from "express";
 import { z } from "zod";
@@ -13,12 +16,54 @@ import {
   RestartCooldownError,
   startBot,
   stopBot,
+  updateBotServerSettings,
 } from "../lib/minecraft-bot";
+import {
+  getOrCreateMinecraftBotServerSettings,
+  saveMinecraftBotServerSettings,
+} from "../lib/minecraft-bot-settings-store";
 
 const router: IRouter = Router();
+const apiErrorSchema = z.object({ message: z.string() });
 
 router.get("/bot/status", (_req, res): void => {
   res.json(GetBotStatusResponse.parse(getBotStatus()));
+});
+
+router.get("/bot/settings", async (req, res): Promise<void> => {
+  try {
+    const settings = await getOrCreateMinecraftBotServerSettings();
+    res.json(GetBotSettingsResponse.parse(settings));
+  } catch (error) {
+    req.log.error({ err: error }, "Could not load Minecraft server settings.");
+    res
+      .status(500)
+      .json(apiErrorSchema.parse({ message: "Could not load server settings." }));
+  }
+});
+
+router.put("/bot/settings", async (req, res): Promise<void> => {
+  const parsed = UpdateBotSettingsBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json(
+      apiErrorSchema.parse({
+        message: parsed.error.issues[0]?.message ?? "Invalid server settings.",
+      }),
+    );
+    return;
+  }
+
+  try {
+    const settings = await saveMinecraftBotServerSettings(parsed.data);
+    const message = updateBotServerSettings(settings);
+    req.log.info({ serverHost: settings.serverHost, serverPort: settings.serverPort }, "Minecraft server settings updated.");
+    res.json(UpdateBotSettingsResponse.parse({ message, settings }));
+  } catch (error) {
+    req.log.error({ err: error }, "Could not save Minecraft server settings.");
+    res
+      .status(500)
+      .json(apiErrorSchema.parse({ message: "Could not save server settings." }));
+  }
 });
 
 function performAction(

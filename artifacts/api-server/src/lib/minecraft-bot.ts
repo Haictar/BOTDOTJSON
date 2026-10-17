@@ -1,6 +1,10 @@
 import { createRequire } from "node:module";
 import type { Bot, BotOptions } from "mineflayer";
 import { logger } from "./logger";
+import {
+  defaultMinecraftBotServerSettings,
+  type MinecraftBotServerSettings,
+} from "./minecraft-bot-config";
 
 const require = createRequire(import.meta.url);
 const mineflayer = require("mineflayer") as typeof import("mineflayer");
@@ -8,10 +12,9 @@ const mineflayer = require("mineflayer") as typeof import("mineflayer");
 type DesiredState = "running" | "stopped";
 
 const isPublishedDeployment = process.env.REPLIT_DEPLOYMENT === "1";
-const serverHost =
-  process.env.MINECRAFT_HOST?.trim() || "THUNDERBALLYT.aternos.me";
-const serverPort = readIntegerEnv("MINECRAFT_PORT", 46830, 1, 65_535);
-const username = process.env.MINECRAFT_USERNAME?.trim() || ".";
+let serverHost = defaultMinecraftBotServerSettings.serverHost;
+let serverPort = defaultMinecraftBotServerSettings.serverPort;
+const username = process.env.MINECRAFT_USERNAME?.trim() || "TRIO";
 const startX = readNumberEnv("BOT_START_X", 49);
 const startY = readNumberEnv("BOT_START_Y", 64);
 const startZ = readNumberEnv("BOT_START_Z", 49);
@@ -23,7 +26,7 @@ const restartCooldownMs = 30 * 1_000;
 let bot: Bot | undefined;
 let botStatus = isPublishedDeployment
   ? "Starting the Minecraft bot…"
-  : "Bot controls are available only in the published deployment.";
+  : "Development monitoring only";
 let botPosition = "N/A";
 let desiredState: DesiredState = isPublishedDeployment ? "running" : "stopped";
 let reconnectTimeout: NodeJS.Timeout | undefined;
@@ -33,6 +36,7 @@ let restartFallbackTimeout: NodeJS.Timeout | undefined;
 let restartInProgress = false;
 let restartAfterStop = false;
 let lastManualRestartAt = 0;
+let serverSettingsReady = !isPublishedDeployment;
 
 export interface BotStatusSnapshot {
   status: string;
@@ -47,7 +51,11 @@ export interface BotStatusSnapshot {
 
 export class BotControlUnavailableError extends Error {
   constructor() {
-    super("Bot controls are available only in the published deployment.");
+    super(
+      !isPublishedDeployment
+        ? "Bot controls are available only in the published deployment."
+        : "Bot controls are unavailable until saved server settings load.",
+    );
     this.name = "BotControlUnavailableError";
   }
 }
@@ -57,28 +65,6 @@ export class RestartCooldownError extends Error {
     super(`Please wait ${secondsRemaining} seconds before restarting again.`);
     this.name = "RestartCooldownError";
   }
-}
-
-function readIntegerEnv(
-  name: string,
-  fallback: number,
-  minimum: number,
-  maximum: number,
-): number {
-  const rawValue = process.env[name];
-  if (rawValue === undefined || rawValue.trim() === "") return fallback;
-
-  const parsedValue = Number(rawValue);
-  if (
-    !Number.isInteger(parsedValue) ||
-    parsedValue < minimum ||
-    parsedValue > maximum
-  ) {
-    throw new Error(
-      `${name} must be an integer between ${minimum} and ${maximum}.`,
-    );
-  }
-  return parsedValue;
 }
 
 function readNumberEnv(name: string, fallback: number): number {
@@ -264,7 +250,7 @@ function createBot(): void {
 }
 
 function ensureControlsAvailable(): void {
-  if (!isPublishedDeployment) {
+  if (!isPublishedDeployment || !serverSettingsReady) {
     throw new BotControlUnavailableError();
   }
 }
@@ -275,11 +261,43 @@ export function getBotStatus(): BotStatusSnapshot {
     position: botPosition,
     connected: botStatus === "Connected and spawned",
     desiredState,
-    controlAvailable: isPublishedDeployment,
+    controlAvailable: isPublishedDeployment && serverSettingsReady,
     serverHost,
     serverPort,
     username,
   };
+}
+
+export function updateBotServerSettings(
+  settings: MinecraftBotServerSettings,
+  reconnectIfRunning = true,
+): string {
+  const changed =
+    settings.serverHost !== serverHost || settings.serverPort !== serverPort;
+
+  serverHost = settings.serverHost;
+  serverPort = settings.serverPort;
+  serverSettingsReady = true;
+
+  if (!changed) {
+    return "Server settings saved. No connection change was needed.";
+  }
+
+  if (
+    !reconnectIfRunning ||
+    !isPublishedDeployment ||
+    desiredState !== "running"
+  ) {
+    return "Server settings saved. They will be used the next time the bot starts.";
+  }
+
+  return requestBotRestart("Minecraft server settings changed.");
+}
+
+export function setBotConfigurationUnavailable(error: unknown): void {
+  serverSettingsReady = false;
+  botStatus = "Could not load saved Minecraft server settings.";
+  logger.error({ err: error }, "Could not load saved Minecraft server settings.");
 }
 
 export function startBot(): string {
@@ -368,17 +386,7 @@ export function stopBot(): string {
   return "Stop requested. Automatic reconnect is disabled.";
 }
 
-export function restartBot(): string {
-  ensureControlsAvailable();
-  const now = Date.now();
-  const elapsedSinceRestart = now - lastManualRestartAt;
-  if (lastManualRestartAt && elapsedSinceRestart < restartCooldownMs) {
-    throw new RestartCooldownError(
-      Math.ceil((restartCooldownMs - elapsedSinceRestart) / 1_000),
-    );
-  }
-
-  lastManualRestartAt = now;
+function requestBotRestart(reason: string): string {
   desiredState = "running";
   restartAfterStop = false;
   clearTimeout(reconnectTimeout);
@@ -399,7 +407,7 @@ export function restartBot(): string {
 
     logger.warn("Bot did not disconnect after Restart; forcing its connection closed.");
     try {
-      currentBot.end("Manual restart fallback.");
+      currentBot.end(`${reason} fallback.`);
     } catch (error) {
       logger.error({ err: error }, "Could not force-close the Minecraft client.");
     }
@@ -416,7 +424,7 @@ export function restartBot(): string {
   }, 5_000);
 
   try {
-    currentBot.quit("Manual restart requested.");
+    currentBot.quit(reason);
   } catch (error) {
     clearTimeout(restartFallbackTimeout);
     restartFallbackTimeout = undefined;
@@ -430,8 +438,22 @@ export function restartBot(): string {
   return `Restart requested. The bot will reconnect in about ${reconnectDelayMs / 1_000} seconds.`;
 }
 
+export function restartBot(): string {
+  ensureControlsAvailable();
+  const now = Date.now();
+  const elapsedSinceRestart = now - lastManualRestartAt;
+  if (lastManualRestartAt && elapsedSinceRestart < restartCooldownMs) {
+    throw new RestartCooldownError(
+      Math.ceil((restartCooldownMs - elapsedSinceRestart) / 1_000),
+    );
+  }
+
+  lastManualRestartAt = now;
+  return requestBotRestart("Manual restart requested.");
+}
+
 export function startBotOnPublishedDeployment(): void {
-  if (!isPublishedDeployment) return;
+  if (!isPublishedDeployment || !serverSettingsReady) return;
   desiredState = "running";
   createBot();
 }

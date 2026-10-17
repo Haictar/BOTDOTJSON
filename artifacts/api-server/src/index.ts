@@ -1,6 +1,11 @@
 import app from "./app";
 import { logger } from "./lib/logger";
-import { startBotOnPublishedDeployment } from "./lib/minecraft-bot";
+import {
+  setBotConfigurationUnavailable,
+  startBotOnPublishedDeployment,
+  updateBotServerSettings,
+} from "./lib/minecraft-bot";
+import { getOrCreateMinecraftBotServerSettings } from "./lib/minecraft-bot-settings-store";
 
 const rawPort = process.env["PORT"];
 
@@ -23,5 +28,11 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
-  startBotOnPublishedDeployment();
+  void getOrCreateMinecraftBotServerSettings()
+    .then((settings) => {
+      updateBotServerSettings(settings, false);
+      logger.info("Loaded saved Minecraft server settings.");
+      startBotOnPublishedDeployment();
+    })
+    .catch((error) => setBotConfigurationUnavailable(error));
 });

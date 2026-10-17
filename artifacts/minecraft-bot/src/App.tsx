@@ -1,12 +1,29 @@
-import { type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
-import { AlertTriangle, ArrowDownToLine, ArrowUpRight, Bot, Check, CircleHelp, Clock3, LoaderCircle, Play, RefreshCw, Server, Square, Wifi, WifiOff } from 'lucide-react';
-import { getGetBotStatusQueryKey, useGetBotStatus, useHealthCheck, getHealthCheckQueryKey, useRestartBot, useStartBot, useStopBot } from '@workspace/api-client-react';
+import { AlertTriangle, ArrowUpRight, Bot, Check, CircleHelp, Clock3, LoaderCircle, Play, RefreshCw, Save, Server, Square, Wifi, WifiOff } from 'lucide-react';
+import {
+  getGetBotSettingsQueryKey,
+  getGetBotStatusQueryKey,
+  getHealthCheckQueryKey,
+  useGetBotSettings,
+  useGetBotStatus,
+  useHealthCheck,
+  useRestartBot,
+  useStartBot,
+  useStopBot,
+  useUpdateBotSettings,
+  type BotServerSettingsInput,
+} from '@workspace/api-client-react';
 import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -19,14 +36,38 @@ function formatStatus(status: string) {
   return status.replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+const serverSettingsSchema = z.object({
+  serverHost: z
+    .string()
+    .trim()
+    .min(1, 'Enter a server address.')
+    .max(253, 'Server address is too long.')
+    .regex(/^[A-Za-z0-9.-]+$/, 'Use a hostname or IPv4 address without a protocol.'),
+  serverPort: z.number().int().min(1, 'Port must be between 1 and 65535.').max(65535, 'Port must be between 1 and 65535.'),
+});
+
 function Dashboard() {
   const queryClient = useQueryClient();
   const botQuery = useGetBotStatus({
     query: { queryKey: getGetBotStatusQueryKey(), refetchInterval: 5000 },
   });
+  const settingsQuery = useGetBotSettings({
+    query: { queryKey: getGetBotSettingsQueryKey(), refetchInterval: 30000 },
+  });
   const healthQuery = useHealthCheck({
     query: { queryKey: getHealthCheckQueryKey(), refetchInterval: 30000 },
   });
+  const settingsForm = useForm<BotServerSettingsInput>({
+    resolver: zodResolver(serverSettingsSchema),
+    defaultValues: { serverHost: '', serverPort: 25565 },
+  });
+  const { reset: resetSettings, formState: { isDirty: settingsAreDirty } } = settingsForm;
+
+  useEffect(() => {
+    if (settingsQuery.data && !settingsAreDirty) {
+      resetSettings(settingsQuery.data);
+    }
+  }, [settingsQuery.data, settingsAreDirty, resetSettings]);
 
   const onActionSuccess = (response: { message: string; status: NonNullable<typeof botQuery.data> }) => {
     queryClient.setQueryData(getGetBotStatusQueryKey(), response.status);
@@ -35,6 +76,16 @@ function Dashboard() {
   const startBot = useStartBot({ mutation: { onSuccess: onActionSuccess } });
   const stopBot = useStopBot({ mutation: { onSuccess: onActionSuccess } });
   const restartBot = useRestartBot({ mutation: { onSuccess: onActionSuccess } });
+  const saveSettings = useUpdateBotSettings({
+    mutation: {
+      onSuccess: (response) => {
+        resetSettings(response.settings);
+        queryClient.setQueryData(getGetBotSettingsQueryKey(), response.settings);
+        void queryClient.invalidateQueries({ queryKey: getGetBotSettingsQueryKey() });
+        void queryClient.invalidateQueries({ queryKey: getGetBotStatusQueryKey() });
+      },
+    },
+  });
   const isPending = startBot.isPending || stopBot.isPending || restartBot.isPending;
   const bot = botQuery.data;
   const canControl = bot?.controlAvailable !== false;
@@ -59,7 +110,7 @@ function Dashboard() {
               <Bot size={19} strokeWidth={1.8} />
             </div>
             <div>
-              <div className="display text-[15px] font-semibold tracking-[-.035em]">MINEKEEP</div>
+               <div className="display text-[15px] font-semibold tracking-[-.035em]">TRIO</div>
               <div className="mono text-[9px] uppercase tracking-[.18em] text-muted-foreground">Bot operations</div>
             </div>
           </div>
@@ -178,7 +229,7 @@ function Dashboard() {
                       <CircleHelp size={17} className="mt-0.5 shrink-0" />
                       <div>
                         <p className="text-[12px] font-semibold">Controls unavailable in this environment</p>
-                        <p className="mt-1 text-[11px] leading-relaxed text-[#857a58]">Minecraft access is restricted to the published deployment. Status monitoring remains active here.</p>
+                       <p className="mt-1 text-[11px] leading-relaxed text-[#857a58]">Minecraft access is restricted to the published deployment. You can still save server settings here.</p>
                       </div>
                     </div>
                   )}
@@ -213,23 +264,101 @@ function Dashboard() {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-7">
-                  <div className="mb-6">
-                    <div className="mono text-[10px] uppercase tracking-[.17em] text-muted-foreground">Server details</div>
-                    <h2 className="display mt-1.5 text-[19px] font-semibold tracking-[-.035em]">Where the bot is hosted</h2>
-                  </div>
-                  <div className="space-y-0">
-                    <DetailRow icon={<Server size={15} />} label="Server address" value={bot.serverHost || 'Not configured'} testId="text-server-host" />
-                    <DetailRow icon={<ArrowDownToLine size={15} />} label="Port" value={String(bot.serverPort || '—')} mono testId="text-server-port" />
-                    <DetailRow icon={connected ? <Wifi size={15} /> : <WifiOff size={15} />} label="Position" value={bot.position || 'Position unavailable'} mono testId="text-position" last />
-                  </div>
-                </div>
+                 <div className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-7">
+                   <div className="mb-5 flex items-start gap-3">
+                     <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-secondary text-muted-foreground"><Server size={16} /></div>
+                     <div>
+                       <div className="mono text-[10px] uppercase tracking-[.17em] text-muted-foreground">Server settings</div>
+                       <h2 className="display mt-1.5 text-[19px] font-semibold tracking-[-.035em]">Connect to this server</h2>
+                     </div>
+                   </div>
+                   <Form {...settingsForm}>
+                     <form
+                       onSubmit={settingsForm.handleSubmit((values) => saveSettings.mutate({ data: values }))}
+                       className="space-y-4"
+                       data-testid="form-server-settings"
+                     >
+                       <div className="grid gap-4 sm:grid-cols-[1fr_132px]">
+                         <FormField
+                           control={settingsForm.control}
+                           name="serverHost"
+                           render={({ field }) => (
+                             <FormItem>
+                               <FormLabel className="text-[11px] text-muted-foreground">Server address</FormLabel>
+                               <FormControl>
+                                 <Input {...field} data-testid="input-server-host" autoComplete="url" placeholder="play.example.net" className="h-10 bg-[#fbfaf6] text-[12px] mono" />
+                               </FormControl>
+                               <FormMessage className="text-[11px]" />
+                             </FormItem>
+                           )}
+                         />
+                         <FormField
+                           control={settingsForm.control}
+                           name="serverPort"
+                           render={({ field }) => (
+                             <FormItem>
+                               <FormLabel className="text-[11px] text-muted-foreground">Port</FormLabel>
+                               <FormControl>
+                                 <Input
+                                   type="number"
+                                   min={1}
+                                   max={65535}
+                                   step={1}
+                                   inputMode="numeric"
+                                   value={field.value ?? ''}
+                                   onChange={(event) => field.onChange(event.currentTarget.value === '' ? undefined : event.currentTarget.valueAsNumber)}
+                                   onBlur={field.onBlur}
+                                   name={field.name}
+                                   ref={field.ref}
+                                   data-testid="input-server-port"
+                                   className="h-10 bg-[#fbfaf6] text-[12px] mono"
+                                 />
+                               </FormControl>
+                               <FormMessage className="text-[11px]" />
+                             </FormItem>
+                           )}
+                         />
+                       </div>
+                       <p className="text-[11px] leading-relaxed text-muted-foreground">
+                         Changes are saved across restarts. If TRIO is online, saving reconnects it to the new address.
+                       </p>
+                       {settingsQuery.isError && (
+                         <div className="flex items-center justify-between gap-3 rounded-lg border border-[#e5c7b6] bg-[#f7e9df] px-3 py-2.5 text-[11px] text-[#804b39]" role="alert" data-testid="status-settings-load-error">
+                           <span>Could not load the saved server settings.</span>
+                           <button type="button" className="font-semibold underline underline-offset-2" onClick={() => void settingsQuery.refetch()}>Retry</button>
+                         </div>
+                       )}
+                       {saveSettings.error && (
+                         <p className="rounded-lg border border-[#e5c7b6] bg-[#f7e9df] px-3 py-2.5 text-[11px] text-[#804b39]" role="alert" data-testid="status-settings-save-error">
+                           {saveSettings.error instanceof Error ? saveSettings.error.message : 'Could not save server settings.'}
+                         </p>
+                       )}
+                       {saveSettings.data && !saveSettings.error && (
+                         <p className="rounded-lg border border-[#c9dcc9] bg-[#e8f0e6] px-3 py-2.5 text-[11px] text-[#376347]" role="status" data-testid="status-settings-save-success">
+                           {saveSettings.data.message}
+                         </p>
+                       )}
+                       <button
+                         type="submit"
+                         disabled={!settingsQuery.isSuccess || saveSettings.isPending}
+                         className="control-button primary-control w-full"
+                         data-testid="button-save-server-settings"
+                       >
+                         {saveSettings.isPending ? <LoaderCircle size={14} className="animate-spin" /> : <Save size={14} />}
+                         Save server settings
+                       </button>
+                     </form>
+                   </Form>
+                   <div className="mt-5 border-t border-border/70 pt-1">
+                     <DetailRow icon={connected ? <Wifi size={15} /> : <WifiOff size={15} />} label="Position" value={bot.position || 'Position unavailable'} mono testId="text-position" last />
+                   </div>
+                 </div>
               </section>
 
               <div className="mt-5 flex flex-col gap-3 rounded-xl border border-border/80 bg-[#eeede5] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2.5">
                   <span className="grid size-7 place-items-center rounded-lg bg-card text-primary"><Check size={14} /></span>
-                   <p className="text-[11px] leading-relaxed text-muted-foreground">Status is polled every 5 seconds. Anyone who can reach this page can control the published bot; no password is required.</p>
+                    <p className="text-[11px] leading-relaxed text-muted-foreground">Status is polled every 5 seconds. Anyone who can reach this page can control TRIO and change its server address and port; no password is required.</p>
                 </div>
                 <a href="https://www.minecraft.net/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-primary transition-colors hover:text-foreground">
                   Minecraft server <ArrowUpRight size={13} />
@@ -273,7 +402,7 @@ function Dashboard() {
         </div>
 
         <footer className="flex h-14 items-center justify-between border-t border-border/80 text-[10px] text-muted-foreground">
-          <span className="mono uppercase tracking-[.13em]">Minekeep <span className="mx-1.5">·</span> Operator console</span>
+          <span className="mono uppercase tracking-[.13em]">TRIO <span className="mx-1.5">·</span> Operator console</span>
           <span className="mono">24 / 7 MONITORING</span>
         </footer>
       </div>

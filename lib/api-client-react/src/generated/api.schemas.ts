@@ -33,6 +33,39 @@ export interface BotActionResponse {
   status: BotStatus;
 }
 
+export interface BotServerSettings {
+  /**
+     * @minLength 1
+     * @maxLength 253
+     * @pattern ^[A-Za-z0-9.-]+$
+     */
+  serverHost: string;
+  /**
+     * @minimum 1
+     * @maximum 65535
+     */
+  serverPort: number;
+}
+
+export interface BotServerSettingsInput {
+  /**
+     * @minLength 1
+     * @maxLength 253
+     * @pattern ^[A-Za-z0-9.-]+$
+     */
+  serverHost: string;
+  /**
+     * @minimum 1
+     * @maximum 65535
+     */
+  serverPort: number;
+}
+
+export interface BotSettingsUpdateResponse {
+  message: string;
+  settings: BotServerSettings;
+}
+
 export interface ApiError {
   message: string;
 }

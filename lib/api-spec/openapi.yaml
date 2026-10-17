@@ -38,6 +38,41 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BotStatus"
+  /bot/settings:
+    get:
+      operationId: getBotSettings
+      tags: [minecraft-bot]
+      summary: Get the saved Minecraft server settings
+      responses:
+        "200":
+          description: Saved server address and port
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BotServerSettings"
+    put:
+      operationId: updateBotSettings
+      tags: [minecraft-bot]
+      summary: Save Minecraft server settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BotServerSettingsInput"
+      responses:
+        "200":
+          description: Settings saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BotSettingsUpdateResponse"
+        "400":
+          description: Invalid server settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
   /bot/start:
     post:
       operationId: startBot
@@ -146,6 +181,46 @@ components:
       required:
         - message
         - status
+    BotServerSettings:
+      type: object
+      properties:
+        serverHost:
+          type: string
+          minLength: 1
+          maxLength: 253
+          pattern: "^[A-Za-z0-9.-]+$"
+        serverPort:
+          type: integer
+          minimum: 1
+          maximum: 65535
+      required:
+        - serverHost
+        - serverPort
+    BotServerSettingsInput:
+      type: object
+      properties:
+        serverHost:
+          type: string
+          minLength: 1
+          maxLength: 253
+          pattern: "^[A-Za-z0-9.-]+$"
+        serverPort:
+          type: integer
+          minimum: 1
+          maximum: 65535
+      required:
+        - serverHost
+        - serverPort
+    BotSettingsUpdateResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        settings:
+          $ref: "#/components/schemas/BotServerSettings"
+      required:
+        - message
+        - settings
     ApiError:
       type: object
       properties:

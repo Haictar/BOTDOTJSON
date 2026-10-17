@@ -8,6 +8,9 @@
 
 export * from './apiError';
 export * from './botActionResponse';
+export * from './botServerSettings';
+export * from './botServerSettingsInput';
+export * from './botSettingsUpdateResponse';
 export * from './botStatus';
 export * from './botStatusDesiredState';
 export * from './healthStatus';
