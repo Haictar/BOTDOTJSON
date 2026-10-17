@@ -18,7 +18,7 @@ const username = process.env.MINECRAFT_USERNAME?.trim() || "TRIO";
 const startX = readNumberEnv("BOT_START_X", 49);
 const startY = readNumberEnv("BOT_START_Y", 64);
 const startZ = readNumberEnv("BOT_START_Z", 49);
-const shortIntervalMs = 60 * 1_000;
+const shortIntervalMs = 8 * 1_000;
 const longIntervalMs = 60 * 60 * 1_000;
 const reconnectDelayMs = 10 * 1_000;
 const restartCooldownMs = 30 * 1_000;
@@ -187,7 +187,7 @@ function createBot(): void {
     clearBotTimers();
     shortTeleportInterval = setInterval(() => {
       if (bot !== currentBot || desiredState !== "running") return;
-      void teleportByX(currentBot, 10);
+      void teleportByX(currentBot, 5);
       updateBotPosition(currentBot);
     }, shortIntervalMs);
 

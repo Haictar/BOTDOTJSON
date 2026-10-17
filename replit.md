@@ -22,7 +22,7 @@ The imported server address and port initialize the saved settings once; dashboa
 - `MINECRAFT_USERNAME` — bot username.
 - `BOT_START_X`, `BOT_START_Y`, `BOT_START_Z` — teleport start coordinates.
 
-The bot teleports 10 blocks on the X axis every 60 seconds, returns to its start coordinates and reconnects hourly, and retries unexpected disconnects after 10 seconds. Teleport commands require server permission.
+The bot teleports 5 blocks along the positive X axis every 8 seconds, returns to its start coordinates and reconnects hourly, and retries unexpected disconnects after 10 seconds. Teleport commands require server permission.
 
 ## Project Layout
 
