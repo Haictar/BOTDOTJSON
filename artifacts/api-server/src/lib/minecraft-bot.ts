@@ -245,10 +245,22 @@ function createBot(): void {
   }
 
   bot = currentBot;
+  connectionTimeout = setTimeout(() => {
+    if (bot !== currentBot || desiredState !== "running") return;
+    botStatus = "Connection timed out before the bot spawned.";
+    logger.warn(
+      { host: serverHost, port: serverPort, timeoutMs: connectionTimeoutMs },
+      "Minecraft connection did not spawn before the timeout.",
+    );
+    forceCloseFailedConnection(currentBot, "Connection attempt timed out.");
+  }, connectionTimeoutMs);
 
   currentBot.on("spawn", () => {
     if (bot !== currentBot || desiredState !== "running") return;
 
+    clearTimeout(connectionTimeout);
+    connectionTimeout = undefined;
+    nextReconnectDelayMs = initialReconnectDelayMs;
     botStatus = "Connected and spawned";
     updateBotPosition(currentBot);
     logger.info({ username }, "Minecraft bot spawned.");
@@ -283,37 +295,14 @@ function createBot(): void {
   });
 
   currentBot.on("end", (reason) => {
-    if (bot !== currentBot) return;
-
-    const wasRestartRequested = restartInProgress;
-    const shouldReconnect = desiredState === "running";
-    bot = undefined;
-    restartInProgress = false;
-    clearTimeout(restartFallbackTimeout);
-    restartFallbackTimeout = undefined;
-    clearBotTimers();
-    botPosition = "N/A";
-
-    if (!shouldReconnect) {
-      botStatus = "Stopped";
-      restartAfterStop = false;
-      logger.info({ reason }, "Minecraft bot stopped.");
-      return;
-    }
-
-    botStatus = wasRestartRequested
-      ? `Restart requested; reconnecting in ${reconnectDelayMs / 1_000} seconds`
-      : `Disconnected: ${String(reason || "connection ended")}`;
-    logger.warn({ reason, wasRestartRequested }, "Minecraft bot disconnected.");
-    const delay = restartAfterStop ? 0 : reconnectDelayMs;
-    restartAfterStop = false;
-    scheduleReconnect(delay);
+    handleConnectionEnd(currentBot, reason);
   });
 
   currentBot.on("error", (error) => {
     if (bot !== currentBot) return;
     botStatus = `Error: ${error.message}`;
     logger.error({ err: error }, "Minecraft bot connection error.");
+    forceCloseFailedConnection(currentBot, `Connection error: ${error.message}`);
   });
 
   currentBot.on("move", () => updateBotPosition(currentBot));
@@ -379,6 +368,7 @@ export function startBot(): string {
   }
 
   desiredState = "running";
+  nextReconnectDelayMs = initialReconnectDelayMs;
   clearTimeout(reconnectTimeout);
   reconnectTimeout = undefined;
 
@@ -401,6 +391,10 @@ export function stopBot(): string {
   restartInProgress = false;
   clearTimeout(reconnectTimeout);
   reconnectTimeout = undefined;
+  clearTimeout(connectionTimeout);
+  connectionTimeout = undefined;
+  clearTimeout(connectionEndFallbackTimeout);
+  connectionEndFallbackTimeout = undefined;
   clearTimeout(restartFallbackTimeout);
   restartFallbackTimeout = undefined;
   clearBotTimers();
@@ -428,11 +422,15 @@ export function stopBot(): string {
       if (bot === currentBot) {
         bot = undefined;
         botPosition = "N/A";
+        clearTimeout(connectionTimeout);
+        connectionTimeout = undefined;
+        clearTimeout(connectionEndFallbackTimeout);
+        connectionEndFallbackTimeout = undefined;
         clearTimeout(restartFallbackTimeout);
         restartFallbackTimeout = undefined;
         if (desiredState === "running") {
           botStatus = "Reconnecting after a new Start request…";
-          scheduleReconnect(restartAfterStop ? 0 : reconnectDelayMs);
+          scheduleReconnect(restartAfterStop ? 0 : undefined);
           restartAfterStop = false;
         } else {
           botStatus = "Stopped";
@@ -449,6 +447,10 @@ export function stopBot(): string {
     if (bot === currentBot) {
       bot = undefined;
       botPosition = "N/A";
+      clearTimeout(connectionTimeout);
+      connectionTimeout = undefined;
+      clearTimeout(connectionEndFallbackTimeout);
+      connectionEndFallbackTimeout = undefined;
       botStatus = "Stopped";
     }
   }
@@ -458,9 +460,12 @@ export function stopBot(): string {
 
 function requestBotRestart(reason: string): string {
   desiredState = "running";
+  nextReconnectDelayMs = initialReconnectDelayMs;
   restartAfterStop = false;
   clearTimeout(reconnectTimeout);
   reconnectTimeout = undefined;
+  clearTimeout(connectionTimeout);
+  connectionTimeout = undefined;
 
   const currentBot = bot;
   if (!currentBot) {
@@ -485,10 +490,14 @@ function requestBotRestart(reason: string): string {
     if (bot === currentBot) {
       bot = undefined;
       restartInProgress = false;
+      clearTimeout(connectionTimeout);
+      connectionTimeout = undefined;
+      clearTimeout(connectionEndFallbackTimeout);
+      connectionEndFallbackTimeout = undefined;
       clearTimeout(restartFallbackTimeout);
       restartFallbackTimeout = undefined;
       botPosition = "N/A";
-      botStatus = `Restart requested; reconnecting in ${reconnectDelayMs / 1_000} seconds`;
+      botStatus = `Restart requested; reconnecting in ${initialReconnectDelayMs / 1_000} seconds`;
       scheduleReconnect();
     }
   }, 5_000);
@@ -505,7 +514,7 @@ function requestBotRestart(reason: string): string {
     return "Could not close the current session cleanly. A reconnect was scheduled.";
   }
 
-  return `Restart requested. The bot will reconnect in about ${reconnectDelayMs / 1_000} seconds.`;
+  return `Restart requested. The bot will reconnect in about ${initialReconnectDelayMs / 1_000} seconds.`;
 }
 
 export function restartBot(): string {
@@ -525,5 +534,6 @@ export function restartBot(): string {
 export function startBotOnPublishedDeployment(): void {
   if (!isPublishedDeployment || !serverSettingsReady) return;
   desiredState = "running";
+  nextReconnectDelayMs = initialReconnectDelayMs;
   createBot();
 }

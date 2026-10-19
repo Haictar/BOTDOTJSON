@@ -205,11 +205,11 @@ function Dashboard() {
                     </span>
                     <div>
                       <div className="display text-[21px] font-semibold capitalize tracking-[-.035em]" data-testid="text-desired-state">{bot.desiredState}</div>
-                      <div className="text-[11px] text-muted-foreground">{bot.desiredState === 'running' ? 'Automatic reconnect enabled' : 'Automatic reconnect disabled'}</div>
+                      <div className="text-[11px] text-muted-foreground">{bot.desiredState === 'running' ? 'Automatic retries enabled' : 'Automatic retries disabled'}</div>
                     </div>
                   </div>
                   <p className="mt-5 text-[12px] leading-[1.6] text-muted-foreground">
-                    {connected ? 'The account is currently active on the server.' : bot.desiredState === 'running' ? 'The bot will attempt to reconnect automatically.' : 'The bot will remain offline until started.'}
+                    {connected ? 'The account is currently active on the server.' : bot.desiredState === 'running' ? 'The service retries failed connections with increasing delays. Autoscale may pause while idle; use a Reserved VM for continuous retries.' : 'The bot will remain offline until started.'}
                   </p>
                 </div>
               </section>
@@ -358,7 +358,7 @@ function Dashboard() {
               <div className="mt-5 flex flex-col gap-3 rounded-xl border border-border/80 bg-[#eeede5] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2.5">
                   <span className="grid size-7 place-items-center rounded-lg bg-card text-primary"><Check size={14} /></span>
-                    <p className="text-[11px] leading-relaxed text-muted-foreground">Status is polled every 5 seconds. Anyone who can reach this page can control TRIO and change its server address and port; no password is required.</p>
+                    <p className="text-[11px] leading-relaxed text-muted-foreground">Opening this page can wake the API on Autoscale, which starts TRIO on service startup. Autoscale may pause while idle; use a Reserved VM to keep it connected continuously. Anyone who can reach this page can control TRIO and change its server address and port; no password is required.</p>
                 </div>
                 <a href="https://www.minecraft.net/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-primary transition-colors hover:text-foreground">
                   Minecraft server <ArrowUpRight size={13} />
@@ -403,7 +403,7 @@ function Dashboard() {
 
         <footer className="flex h-14 items-center justify-between border-t border-border/80 text-[10px] text-muted-foreground">
           <span className="mono uppercase tracking-[.13em]">TRIO <span className="mx-1.5">·</span> Operator console</span>
-          <span className="mono">24 / 7 MONITORING</span>
+          <span className="mono">RESERVED VM FOR 24 / 7</span>
         </footer>
       </div>
     </main>

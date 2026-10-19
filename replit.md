@@ -7,7 +7,7 @@ A Mineflayer bot named TRIO with a live status dashboard and web controls for st
 - `pnpm --filter @workspace/minecraft-bot run dev` — run the dashboard.
 - `pnpm --filter @workspace/api-server run dev` — run the API and bot service.
 - `pnpm run typecheck` — typecheck the workspace.
-- The development dashboard and API do not connect to Minecraft. The bot connects automatically only in the published deployment to avoid duplicate logins with the same username.
+- The development dashboard and API do not connect to Minecraft. The published API starts TRIO when its process starts; the dashboard itself only requests status. Autoscale may pause while idle, so page traffic can wake the API and trigger its startup connection. Use a Reserved VM deployment to keep the bot and reconnect loop running continuously.
 - Start, Stop, Restart, and server-setting controls are intentionally unauthenticated. Anyone who can reach the published dashboard can control the bot and change its target server.
 - Stop disables automatic reconnect. Start enables reconnect and opens a new Minecraft connection. Restart reconnects after a short delay and is limited to one manual restart every 30 seconds.
 - Server address and port are editable on the dashboard and persisted in PostgreSQL. Saving changes while TRIO is running requests a reconnect to the new server.
@@ -22,7 +22,7 @@ The imported server address and port initialize the saved settings once; dashboa
 - `MINECRAFT_USERNAME` — bot username.
 - `BOT_START_X`, `BOT_START_Y`, `BOT_START_Z` — teleport start coordinates.
 
-The bot teleports 5 blocks along the positive X axis every 8 seconds, returns to its start coordinates and reconnects hourly, and retries unexpected disconnects after 10 seconds. Teleport commands require server permission.
+The bot teleports 5 blocks along the positive X axis every 8 seconds, returns to its start coordinates and reconnects hourly, and retries unexpected disconnects with exponential backoff (starting at 10 seconds, capped at 5 minutes). Failed attempts are force-closed and timed out after 150 seconds. Teleport commands require server permission.
 
 ## Project Layout
 
