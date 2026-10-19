@@ -44,6 +44,10 @@ const serverSettingsSchema = z.object({
     .max(253, 'Server address is too long.')
     .regex(/^[A-Za-z0-9.-]+$/, 'Use a hostname or IPv4 address without a protocol.'),
   serverPort: z.number().int().min(1, 'Port must be between 1 and 65535.').max(65535, 'Port must be between 1 and 65535.'),
+  minecraftVersion: z
+    .string()
+    .trim()
+    .regex(/^(auto|\d+(?:\.\d+){1,2})$/, 'Enter "auto" or a Java version such as 1.21.4.'),
 });
 
 function Dashboard() {
@@ -59,7 +63,7 @@ function Dashboard() {
   });
   const settingsForm = useForm<BotServerSettingsInput>({
     resolver: zodResolver(serverSettingsSchema),
-    defaultValues: { serverHost: '', serverPort: 25565 },
+    defaultValues: { serverHost: '', serverPort: 25565, minecraftVersion: 'auto' },
   });
   const { reset: resetSettings, formState: { isDirty: settingsAreDirty } } = settingsForm;
 
@@ -319,8 +323,30 @@ function Dashboard() {
                            )}
                          />
                        </div>
+                        <FormField
+                          control={settingsForm.control}
+                          name="minecraftVersion"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-[11px] text-muted-foreground">Minecraft Java version</FormLabel>
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  data-testid="input-minecraft-version"
+                                  autoComplete="off"
+                                  placeholder="auto or 1.21.4"
+                                  className="h-10 bg-[#fbfaf6] text-[12px] mono"
+                                />
+                              </FormControl>
+                              <FormMessage className="text-[11px]" />
+                              <p className="text-[10px] leading-relaxed text-muted-foreground">
+                                Use “auto” to detect it from the server ping, or enter the exact Java version to bypass detection. Mineflayer supports Java 1.8.8–26.1; Bedrock servers are not supported.
+                              </p>
+                            </FormItem>
+                          )}
+                        />
                        <p className="text-[11px] leading-relaxed text-muted-foreground">
-                         Changes are saved across restarts. If TRIO is online, saving reconnects it to the new address.
+                          Saved changes reconnect TRIO if it is running.
                        </p>
                        {settingsQuery.isError && (
                          <div className="flex items-center justify-between gap-3 rounded-lg border border-[#e5c7b6] bg-[#f7e9df] px-3 py-2.5 text-[11px] text-[#804b39]" role="alert" data-testid="status-settings-load-error">
@@ -358,7 +384,7 @@ function Dashboard() {
               <div className="mt-5 flex flex-col gap-3 rounded-xl border border-border/80 bg-[#eeede5] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2.5">
                   <span className="grid size-7 place-items-center rounded-lg bg-card text-primary"><Check size={14} /></span>
-                    <p className="text-[11px] leading-relaxed text-muted-foreground">Opening this page can wake the API on Autoscale, which starts TRIO on service startup. Autoscale may pause while idle; use a Reserved VM to keep it connected continuously. Anyone who can reach this page can control TRIO and change its server address and port; no password is required.</p>
+                    <p className="text-[11px] leading-relaxed text-muted-foreground">Opening this page can wake the API on Autoscale, which starts TRIO on service startup. Autoscale may pause while idle; use a Reserved VM to keep it connected continuously. Anyone who can reach this page can control TRIO and change its server address, port, and Java version; no password is required.</p>
                 </div>
                 <a href="https://www.minecraft.net/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-primary transition-colors hover:text-foreground">
                   Minecraft server <ArrowUpRight size={13} />

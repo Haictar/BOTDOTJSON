@@ -41,11 +41,17 @@ export const getBotSettingsResponseServerHostMax = 253;
 export const getBotSettingsResponseServerHostRegExp = new RegExp('^[A-Za-z0-9.-]+$');
 export const getBotSettingsResponseServerPortMax = 65535;
 
+export const getBotSettingsResponseMinecraftVersionMin = 3;
+export const getBotSettingsResponseMinecraftVersionMax = 20;
+
+
+export const getBotSettingsResponseMinecraftVersionRegExp = new RegExp('^(auto|[0-9]+(\\.[0-9]+){1,2})$');
 
 
 export const GetBotSettingsResponse = zod.object({
   "serverHost": zod.string().min(1).max(getBotSettingsResponseServerHostMax).regex(getBotSettingsResponseServerHostRegExp),
-  "serverPort": zod.number().int().min(1).max(getBotSettingsResponseServerPortMax)
+  "serverPort": zod.number().int().min(1).max(getBotSettingsResponseServerPortMax),
+  "minecraftVersion": zod.string().min(getBotSettingsResponseMinecraftVersionMin).max(getBotSettingsResponseMinecraftVersionMax).regex(getBotSettingsResponseMinecraftVersionRegExp)
 })
 
 
@@ -58,11 +64,17 @@ export const updateBotSettingsBodyServerHostMax = 253;
 export const updateBotSettingsBodyServerHostRegExp = new RegExp('^[A-Za-z0-9.-]+$');
 export const updateBotSettingsBodyServerPortMax = 65535;
 
+export const updateBotSettingsBodyMinecraftVersionMin = 3;
+export const updateBotSettingsBodyMinecraftVersionMax = 20;
+
+
+export const updateBotSettingsBodyMinecraftVersionRegExp = new RegExp('^(auto|[0-9]+(\\.[0-9]+){1,2})$');
 
 
 export const UpdateBotSettingsBody = zod.object({
   "serverHost": zod.string().min(1).max(updateBotSettingsBodyServerHostMax).regex(updateBotSettingsBodyServerHostRegExp),
-  "serverPort": zod.number().int().min(1).max(updateBotSettingsBodyServerPortMax)
+  "serverPort": zod.number().int().min(1).max(updateBotSettingsBodyServerPortMax),
+  "minecraftVersion": zod.string().min(updateBotSettingsBodyMinecraftVersionMin).max(updateBotSettingsBodyMinecraftVersionMax).regex(updateBotSettingsBodyMinecraftVersionRegExp)
 })
 
 export const updateBotSettingsResponseSettingsServerHostMax = 253;
@@ -71,13 +83,19 @@ export const updateBotSettingsResponseSettingsServerHostMax = 253;
 export const updateBotSettingsResponseSettingsServerHostRegExp = new RegExp('^[A-Za-z0-9.-]+$');
 export const updateBotSettingsResponseSettingsServerPortMax = 65535;
 
+export const updateBotSettingsResponseSettingsMinecraftVersionMin = 3;
+export const updateBotSettingsResponseSettingsMinecraftVersionMax = 20;
+
+
+export const updateBotSettingsResponseSettingsMinecraftVersionRegExp = new RegExp('^(auto|[0-9]+(\\.[0-9]+){1,2})$');
 
 
 export const UpdateBotSettingsResponse = zod.object({
   "message": zod.string(),
   "settings": zod.object({
   "serverHost": zod.string().min(1).max(updateBotSettingsResponseSettingsServerHostMax).regex(updateBotSettingsResponseSettingsServerHostRegExp),
-  "serverPort": zod.number().int().min(1).max(updateBotSettingsResponseSettingsServerPortMax)
+  "serverPort": zod.number().int().min(1).max(updateBotSettingsResponseSettingsServerPortMax),
+  "minecraftVersion": zod.string().min(updateBotSettingsResponseSettingsMinecraftVersionMin).max(updateBotSettingsResponseSettingsMinecraftVersionMax).regex(updateBotSettingsResponseSettingsMinecraftVersionRegExp)
 })
 })
 

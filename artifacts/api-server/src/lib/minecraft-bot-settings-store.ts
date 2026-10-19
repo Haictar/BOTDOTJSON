@@ -18,6 +18,7 @@ async function loadOrCreateSettings(): Promise<MinecraftBotServerSettings> {
     .select({
       serverHost: minecraftBotSettingsTable.serverHost,
       serverPort: minecraftBotSettingsTable.serverPort,
+      minecraftVersion: minecraftBotSettingsTable.minecraftVersion,
     })
     .from(minecraftBotSettingsTable)
     .where(eq(minecraftBotSettingsTable.id, singletonId))
@@ -47,12 +48,14 @@ export async function saveMinecraftBotServerSettings(
       set: {
         serverHost: settings.serverHost,
         serverPort: settings.serverPort,
+        minecraftVersion: settings.minecraftVersion,
         updatedAt: new Date(),
       },
     })
     .returning({
       serverHost: minecraftBotSettingsTable.serverHost,
       serverPort: minecraftBotSettingsTable.serverPort,
+      minecraftVersion: minecraftBotSettingsTable.minecraftVersion,
     });
 
   if (!savedSettings) {

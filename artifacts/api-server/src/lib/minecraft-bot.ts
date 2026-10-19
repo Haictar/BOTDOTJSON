@@ -14,6 +14,7 @@ type DesiredState = "running" | "stopped";
 const isPublishedDeployment = process.env.REPLIT_DEPLOYMENT === "1";
 let serverHost = defaultMinecraftBotServerSettings.serverHost;
 let serverPort = defaultMinecraftBotServerSettings.serverPort;
+let minecraftVersion = defaultMinecraftBotServerSettings.minecraftVersion;
 const username = process.env.MINECRAFT_USERNAME?.trim() || "TRIO";
 const startX = readNumberEnv("BOT_START_X", 49);
 const startY = readNumberEnv("BOT_START_Y", 64);
@@ -226,11 +227,12 @@ function createBot(): void {
     host: serverHost,
     port: serverPort,
     username,
+    version: minecraftVersion === "auto" ? undefined : minecraftVersion,
     checkTimeoutInterval: 60 * 1_000,
   };
 
   logger.info(
-    { host: serverHost, port: serverPort, username },
+    { host: serverHost, port: serverPort, username, minecraftVersion },
     "Attempting Minecraft connection.",
   );
 
@@ -263,7 +265,10 @@ function createBot(): void {
     nextReconnectDelayMs = initialReconnectDelayMs;
     botStatus = "Connected and spawned";
     updateBotPosition(currentBot);
-    logger.info({ username }, "Minecraft bot spawned.");
+    logger.info(
+      { username, detectedMinecraftVersion: currentBot.version },
+      "Minecraft bot spawned.",
+    );
     void teleportToStart(currentBot);
 
     clearBotTimers();
@@ -332,10 +337,13 @@ export function updateBotServerSettings(
   reconnectIfRunning = true,
 ): string {
   const changed =
-    settings.serverHost !== serverHost || settings.serverPort !== serverPort;
+    settings.serverHost !== serverHost ||
+    settings.serverPort !== serverPort ||
+    settings.minecraftVersion !== minecraftVersion;
 
   serverHost = settings.serverHost;
   serverPort = settings.serverPort;
+  minecraftVersion = settings.minecraftVersion;
   serverSettingsReady = true;
 
   if (!changed) {

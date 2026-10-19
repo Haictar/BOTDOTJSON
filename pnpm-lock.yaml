@@ -189,6 +189,9 @@ importers:
       express:
         specifier: ^5.2.1
         version: 5.2.1
+      minecraft-data:
+        specifier: 3.117.0
+        version: 3.117.0
       mineflayer:
         specifier: ^4.39.0
         version: 4.39.0

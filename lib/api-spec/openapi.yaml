@@ -193,9 +193,15 @@ components:
           type: integer
           minimum: 1
           maximum: 65535
+        minecraftVersion:
+          type: string
+          minLength: 3
+          maxLength: 20
+          pattern: '^(auto|[0-9]+(\.[0-9]+){1,2})$'
       required:
         - serverHost
         - serverPort
+        - minecraftVersion
     BotServerSettingsInput:
       type: object
       properties:
@@ -208,9 +214,15 @@ components:
           type: integer
           minimum: 1
           maximum: 65535
+        minecraftVersion:
+          type: string
+          minLength: 3
+          maxLength: 20
+          pattern: '^(auto|[0-9]+(\.[0-9]+){1,2})$'
       required:
         - serverHost
         - serverPort
+        - minecraftVersion
     BotSettingsUpdateResponse:
       type: object
       properties:

@@ -1,6 +1,18 @@
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+const minecraftData = require("minecraft-data") as (
+  version: string,
+) => unknown | null;
+
 export interface MinecraftBotServerSettings {
   serverHost: string;
   serverPort: number;
+  minecraftVersion: string;
+}
+
+export function isSupportedMinecraftVersion(version: string): boolean {
+  return version === "auto" || Boolean(minecraftData(version));
 }
 
 function readPortFromEnvironment(): number {
@@ -18,4 +30,5 @@ export const defaultMinecraftBotServerSettings: MinecraftBotServerSettings = {
   serverHost:
     process.env.MINECRAFT_HOST?.trim() || "THUNDERBALLYT.aternos.me",
   serverPort: readPortFromEnvironment(),
+  minecraftVersion: process.env.MINECRAFT_VERSION?.trim() || "auto",
 };

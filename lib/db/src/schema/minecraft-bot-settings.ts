@@ -6,6 +6,7 @@ export const minecraftBotSettingsTable = pgTable("minecraft_bot_settings", {
   id: integer("id").primaryKey().default(1),
   serverHost: text("server_host").notNull(),
   serverPort: integer("server_port").notNull(),
+  minecraftVersion: text("minecraft_version").notNull().default("auto"),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow()

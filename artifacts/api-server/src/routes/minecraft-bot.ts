@@ -18,6 +18,7 @@ import {
   stopBot,
   updateBotServerSettings,
 } from "../lib/minecraft-bot";
+import { isSupportedMinecraftVersion } from "../lib/minecraft-bot-config";
 import {
   getOrCreateMinecraftBotServerSettings,
   saveMinecraftBotServerSettings,
@@ -52,11 +53,27 @@ router.put("/bot/settings", async (req, res): Promise<void> => {
     );
     return;
   }
+  if (!isSupportedMinecraftVersion(parsed.data.minecraftVersion)) {
+    res.status(400).json(
+      apiErrorSchema.parse({
+        message:
+          "Unsupported Java version. Choose auto or a version supported by Mineflayer.",
+      }),
+    );
+    return;
+  }
 
   try {
     const settings = await saveMinecraftBotServerSettings(parsed.data);
     const message = updateBotServerSettings(settings);
-    req.log.info({ serverHost: settings.serverHost, serverPort: settings.serverPort }, "Minecraft server settings updated.");
+    req.log.info(
+      {
+        serverHost: settings.serverHost,
+        serverPort: settings.serverPort,
+        minecraftVersion: settings.minecraftVersion,
+      },
+      "Minecraft server settings updated.",
+    );
     res.json(UpdateBotSettingsResponse.parse({ message, settings }));
   } catch (error) {
     req.log.error({ err: error }, "Could not save Minecraft server settings.");

@@ -45,6 +45,12 @@ export interface BotServerSettings {
      * @maximum 65535
      */
   serverPort: number;
+  /**
+     * @minLength 3
+     * @maxLength 20
+     * @pattern ^(auto|[0-9]+(\.[0-9]+){1,2})$
+     */
+  minecraftVersion: string;
 }
 
 export interface BotServerSettingsInput {
@@ -59,6 +65,12 @@ export interface BotServerSettingsInput {
      * @maximum 65535
      */
   serverPort: number;
+  /**
+     * @minLength 3
+     * @maxLength 20
+     * @pattern ^(auto|[0-9]+(\.[0-9]+){1,2})$
+     */
+  minecraftVersion: string;
 }
 
 export interface BotSettingsUpdateResponse {
