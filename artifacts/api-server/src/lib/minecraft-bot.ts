@@ -20,7 +20,9 @@ const startY = readNumberEnv("BOT_START_Y", 64);
 const startZ = readNumberEnv("BOT_START_Z", 49);
 const shortIntervalMs = 8 * 1_000;
 const longIntervalMs = 60 * 60 * 1_000;
-const reconnectDelayMs = 10 * 1_000;
+const initialReconnectDelayMs = 10 * 1_000;
+const maxReconnectDelayMs = 5 * 60 * 1_000;
+const connectionTimeoutMs = 150 * 1_000;
 const restartCooldownMs = 30 * 1_000;
 
 let bot: Bot | undefined;
@@ -30,12 +32,15 @@ let botStatus = isPublishedDeployment
 let botPosition = "N/A";
 let desiredState: DesiredState = isPublishedDeployment ? "running" : "stopped";
 let reconnectTimeout: NodeJS.Timeout | undefined;
+let connectionTimeout: NodeJS.Timeout | undefined;
+let connectionEndFallbackTimeout: NodeJS.Timeout | undefined;
 let shortTeleportInterval: NodeJS.Timeout | undefined;
 let longTeleportTimeout: NodeJS.Timeout | undefined;
 let restartFallbackTimeout: NodeJS.Timeout | undefined;
 let restartInProgress = false;
 let restartAfterStop = false;
 let lastManualRestartAt = 0;
+let nextReconnectDelayMs = initialReconnectDelayMs;
 let serverSettingsReady = !isPublishedDeployment;
 
 export interface BotStatusSnapshot {
@@ -85,15 +90,80 @@ function clearBotTimers(): void {
   longTeleportTimeout = undefined;
 }
 
-function scheduleReconnect(delay = reconnectDelayMs): void {
+function scheduleReconnect(delay?: number): void {
   if (!isPublishedDeployment || desiredState !== "running") return;
 
   clearTimeout(reconnectTimeout);
-  botStatus = `Reconnecting in ${Math.ceil(delay / 1_000)} seconds…`;
+  const retryDelay = delay ?? nextReconnectDelayMs;
+  botStatus = `Reconnecting in ${Math.ceil(retryDelay / 1_000)} seconds…`;
+  if (delay === undefined) {
+    nextReconnectDelayMs = Math.min(
+      nextReconnectDelayMs * 2,
+      maxReconnectDelayMs,
+    );
+  }
   reconnectTimeout = setTimeout(() => {
     reconnectTimeout = undefined;
     createBot();
-  }, delay);
+  }, retryDelay);
+}
+
+function handleConnectionEnd(target: Bot, reason: string | undefined): void {
+  if (bot !== target) return;
+
+  const wasRestartRequested = restartInProgress;
+  const shouldReconnect = desiredState === "running";
+  bot = undefined;
+  restartInProgress = false;
+  clearTimeout(connectionTimeout);
+  connectionTimeout = undefined;
+  clearTimeout(connectionEndFallbackTimeout);
+  connectionEndFallbackTimeout = undefined;
+  clearTimeout(restartFallbackTimeout);
+  restartFallbackTimeout = undefined;
+  clearBotTimers();
+  botPosition = "N/A";
+
+  if (!shouldReconnect) {
+    botStatus = "Stopped";
+    restartAfterStop = false;
+    logger.info({ reason }, "Minecraft bot stopped.");
+    return;
+  }
+
+  logger.warn({ reason, wasRestartRequested }, "Minecraft bot disconnected.");
+  const immediateReconnect = restartAfterStop;
+  restartAfterStop = false;
+  scheduleReconnect(immediateReconnect ? 0 : undefined);
+}
+
+function forceCloseFailedConnection(target: Bot, reason: string): void {
+  clearTimeout(connectionTimeout);
+  connectionTimeout = undefined;
+  clearTimeout(connectionEndFallbackTimeout);
+  connectionEndFallbackTimeout = setTimeout(() => {
+    connectionEndFallbackTimeout = undefined;
+    if (bot !== target) return;
+
+    logger.warn({ reason }, "Minecraft client did not emit end after failure; clearing it.");
+    handleConnectionEnd(target, reason);
+  }, 5_000);
+
+  try {
+    const socket = target._client.socket;
+    if (socket && !socket.destroyed) {
+      socket.destroy();
+    } else {
+      target.end(reason);
+    }
+  } catch (error) {
+    logger.error({ err: error, reason }, "Could not close the failed Minecraft connection.");
+    try {
+      target.end(reason);
+    } catch (endError) {
+      logger.error({ err: endError, reason }, "Could not end the failed Minecraft client.");
+    }
+  }
 }
 
 function currentPosition(target: Bot): string {
